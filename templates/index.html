@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Scientific Calculator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e1a;
+            --bg2: #0f1527;
+            --surface: #141a2e;
+            --surface2: #1c2340;
+            --border: rgba(100,180,255,0.12);
+            --accent: #00c6ff;
+            --accent2: #7b2fff;
+            --accent3: #ff6b6b;
+            --text: #e8f4ff;
+            --text-dim: #7a8aaa;
+            --display-bg: #07090f;
+            --key-bg: #1a2035;
+            --key-hover: #243050;
+            --key-op: #1a1535;
+            --key-op-hover: #241f4a;
+            --key-eq: linear-gradient(135deg, #00c6ff, #7b2fff);
+            --key-eq-hover: linear-gradient(135deg, #0adefb, #9255ff);
+            --key-sci: #101828;
+            --key-sci-hover: #182238;
+            --key-clear: #2a1020;
+            --key-clear-hover: #3d1a2e;
+            --shadow: rgba(0,198,255,0.15);
+            --history-bg: #0d1220;
+            --glass: rgba(20,26,46,0.85);
+            --result-color: #00c6ff;
+            --transition: 0.35s cubic-bezier(.4,0,.2,1);
+        }
+
+        [data-theme="light"] {
+            --bg: #e8edf8;
+            --bg2: #dce3f5;
+            --surface: #f0f4ff;
+            --surface2: #e4eaf8;
+            --border: rgba(60,120,240,0.14);
+            --accent: #1a6eff;
+            --accent2: #7b2fff;
+            --accent3: #e8383a;
+            --text: #181c2e;
+            --text-dim: #5a6880;
+            --display-bg: #e0e8f8;
+            --key-bg: #dde5fa;
+            --key-hover: #cad4f5;
+            --key-op: #d8d0f5;
+            --key-op-hover: #c8bef0;
+            --key-eq: linear-gradient(135deg, #1a6eff, #7b2fff);
+            --key-eq-hover: linear-gradient(135deg, #0055ee, #9255ff);
+            --key-sci: #e8edf8;
+            --key-sci-hover: #d5ddf2;
+            --key-clear: #fde8e8;
+            --key-clear-hover: #fdd0d0;
+            --shadow: rgba(26,110,255,0.12);
+            --history-bg: #e0e8f8;
+            --glass: rgba(240,244,255,0.9);
+            --result-color: #1a6eff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            overflow-x: hidden;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        /* Animated Background Canvas */
+        #bgCanvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ── LAYOUT ── */
+        .app-wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 820px;
+        }
+
+        /* ── CALCULATOR ── */
+        .calculator {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 20px;
+            width: 340px;
+            min-width: 340px;
+            box-shadow:
+                0 0 0 1px var(--border),
+                0 8px 48px var(--shadow),
+                0 2px 8px rgba(0,0,0,0.25),
+                inset 0 1px 0 rgba(255,255,255,0.06);
+            transition: background var(--transition), box-shadow var(--transition);
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .brand {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+        .header-btns { display: flex; gap: 8px; align-items: center; }
+        .icon-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--key-hover); }
+        .icon-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(0,198,255,0.08); }
+
+        /* ── DISPLAY ── */
+        .display {
+            background: var(--display-bg);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            min-height: 96px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        .display::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.3;
+        }
+        .display-expr {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+            min-height: 18px;
+            text-align: right;
+            word-break: break-all;
+            letter-spacing: 0.5px;
+        }
+        .display-main {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 32px;
+            font-weight: 400;
+            color: var(--text);
+            text-align: right;
+            word-break: break-all;
+            transition: color 0.2s;
+            line-height: 1.1;
+        }
+        .display-main.result { color: var(--result-color); }
+
+        /* ── KEYPAD ── */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 9px;
+        }
+
+        .key {
+            background: var(--key-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'Exo 2', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 0;
+            height: 52px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(.4,0,.2,1);
+            display: flex; align-items: center; justify-content: center;
+            letter-spacing: 0.3px;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .key::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            border-radius: inherit;
+            transition: opacity 0.15s;
+        }
+        .key:active::after { opacity: 0.06; }
+        .key:hover { background: var(--key-hover); border-color: rgba(100,180,255,0.2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .key:active { transform: translateY(0); box-shadow: none; }
+
+        .key.op { background: var(--key-op); color: var(--accent); font-size: 16px; }
+        .key.op:hover { background: var(--key-op-hover); }
+
+        .key.eq {
+            background: var(--key-eq);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(0,198,255,0.25);
+            font-size: 18px;
+        }
+        .key.eq:hover {
+            background: var(--key-eq-hover);
+            box-shadow: 0 6px 24px rgba(0,198,255,0.4);
+            transform: translateY(-2px);
+        }
+
+        .key.sci {
+            background: var(--key-sci);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0;
+        }
+        .key.sci:hover { background: var(--key-sci-hover); }
+
+        .key.clear {
+            background: var(--key-clear);
+            color: var(--accent3);
+            border-color: rgba(255,107,107,0.15);
+        }
+        .key.clear:hover { background: var(--key-clear-hover); }
+
+        .key.zero { grid-column: span 2; justify-content: flex-start; padding-left: 22px; }
+
+        /* ── HISTORY PANEL ── */
+        .history-panel {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 20px;
+            flex: 1;
+            min-width: 0;
+            height: 520px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 48px var(--shadow), 0 2px 8px rgba(0,0,0,0.2);
+            transition: all var(--transition);
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .history-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+        .clear-history-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 10px;
+            letter-spacing: 1px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Exo 2', sans-serif;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .clear-history-btn:hover { color: var(--accent3); border-color: var(--accent3); }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-track { background: transparent; }
+        .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .history-item {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            animation: slideIn 0.3s cubic-bezier(.4,0,.2,1);
+        }
+        .history-item:hover {
+            border-color: rgba(0,198,255,0.3);
+            background: var(--key-hover);
+            transform: translateX(3px);
+        }
+        .history-expr {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+        .history-result {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 16px;
+            color: var(--result-color);
+            font-weight: 700;
+        }
+        .history-empty {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 13px;
+            margin: auto;
+            opacity: 0.5;
+        }
+        .history-empty svg { display: block; margin: 0 auto 10px; opacity: 0.3; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 680px) {
+            .app-wrapper { flex-direction: column; align-items: center; }
+            .calculator { width: 100%; min-width: unset; }
+            .history-panel {
+                width: 100%;
+                height: 200px;
+                display: none;
+            }
+            .history-panel.visible { display: flex; }
+        }
+
+        /* ── RIPPLE ── */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            transform: scale(0);
+            animation: ripple 0.4s linear;
+            pointer-events: none;
+        }
+        @keyframes ripple {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        /* ── PULSE GLOW on key press ── */
+        .key.pulse { animation: keyPulse 0.25s ease; }
+        @keyframes keyPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(0,198,255,0.5); }
+            100% { box-shadow: 0 0 0 8px transparent; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="app-wrapper">
+
+    <!-- ── CALCULATOR ── -->
+    <div class="calculator">
+        <div class="header">
+            <span class="brand">SCI-CALC</span>
+            <div class="header-btns">
+                <button class="icon-btn" id="historyToggle" title="Toggle History" aria-label="Toggle history">
+                    <!-- clock icon -->
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </button>
+                <button class="icon-btn" id="themeToggle" title="Toggle Theme" aria-label="Toggle theme">
+                    <!-- moon/sun icon -->
+                    <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="display" id="display">
+            <div class="display-expr" id="displayExpr"></div>
+            <div class="display-main" id="displayMain">0</div>
+        </div>
+
+        <div class="keypad" id="keypad">
+            <!-- Row 1: Sci -->
+            <button class="key sci" data-action="sin">sin</button>
+            <button class="key sci" data-action="cos">cos</button>
+            <button class="key sci" data-action="tan">tan</button>
+            <button class="key sci" data-action="log">log</button>
+
+            <!-- Row 2: Sci -->
+            <button class="key sci" data-action="sqrt">√</button>
+            <button class="key sci" data-action="power">xʸ</button>
+            <button class="key sci" data-action="pi">π</button>
+            <button class="key sci" data-action="e-const">e</button>
+
+            <!-- Row 3 -->
+            <button class="key clear" data-action="clear">AC</button>
+            <button class="key clear" data-action="backspace">⌫</button>
+            <button class="key op" data-action="percent">%</button>
+            <button class="key op" data-action="÷">÷</button>
+
+            <!-- Row 4 -->
+            <button class="key" data-action="7">7</button>
+            <button class="key" data-action="8">8</button>
+            <button class="key" data-action="9">9</button>
+            <button class="key op" data-action="×">×</button>
+
+            <!-- Row 5 -->
+            <button class="key" data-action="4">4</button>
+            <button class="key" data-action="5">5</button>
+            <button class="key" data-action="6">6</button>
+            <button class="key op" data-action="−">−</button>
+
+            <!-- Row 6 -->
+            <button class="key" data-action="1">1</button>
+            <button class="key" data-action="2">2</button>
+            <button class="key" data-action="3">3</button>
+            <button class="key op" data-action="+">+</button>
+
+            <!-- Row 7 -->
+            <button class="key zero" data-action="0">0</button>
+            <button class="key" data-action=".">.</button>
+            <button class="key eq" data-action="=">=</button>
+        </div>
+    </div>
+
+    <!-- ── HISTORY PANEL ── -->
+    <div class="history-panel" id="historyPanel">
+        <div class="history-header">
+            <span class="history-title">History</span>
+            <button class="clear-history-btn" id="clearHistory">Clear All</button>
+        </div>
+        <div class="history-list" id="historyList">
+            <div class="history-empty" id="historyEmpty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                No history yet
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── ANIMATED BACKGROUND ──────────────────────────────────────────
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resizeCanvas() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+class Particle {
+    constructor() { this.reset(true); }
+    reset(init) {
+        this.x = Math.random() * W;
+        this.y = init ? Math.random() * H : H + 10;
+        this.r = Math.random() * 1.5 + 0.3;
+        this.speed = Math.random() * 0.4 + 0.1;
+        this.drift = (Math.random() - 0.5) * 0.3;
+        this.opacity = Math.random() * 0.5 + 0.1;
+        this.color = Math.random() > 0.5
+            ? `rgba(0,198,255,${this.opacity})`
+            : `rgba(123,47,255,${this.opacity})`;
+    }
+    update() {
+        this.y -= this.speed;
+        this.x += this.drift;
+        if (this.y < -5) this.reset(false);
+    }
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
+}
+
+// Grid lines
+function drawGrid() {
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const gc = isDark ? 'rgba(0,198,255,0.03)' : 'rgba(26,110,255,0.04)';
+    ctx.strokeStyle = gc;
+    ctx.lineWidth = 1;
+    const spacing = 60;
+    for (let x = 0; x < W; x += spacing) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += spacing) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+}
+
+// Glowing orbs
+const orbs = [
+    { x: 0.15, y: 0.3, r: 0.2, c1: 'rgba(0,198,255,0.07)', c2: 'transparent', phase: 0, sp: 0.003 },
+    { x: 0.85, y: 0.7, r: 0.18, c1: 'rgba(123,47,255,0.08)', c2: 'transparent', phase: Math.PI, sp: 0.004 },
+    { x: 0.5,  y: 0.9, r: 0.15, c1: 'rgba(0,198,255,0.05)', c2: 'transparent', phase: 1, sp: 0.005 },
+];
+
+function drawOrbs(t) {
+    orbs.forEach(o => {
+        o.phase += o.sp;
+        const pulse = 1 + 0.08 * Math.sin(o.phase);
+        const gx = o.x * W, gy = o.y * H;
+        const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, o.r * Math.min(W,H) * pulse);
+        grad.addColorStop(0, o.c1);
+        grad.addColorStop(1, o.c2);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(gx, gy, o.r * Math.min(W,H) * pulse, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+function animate(t) {
+    ctx.clearRect(0, 0, W, H);
+    drawGrid();
+    drawOrbs(t);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// ── CALCULATOR LOGIC ──────────────────────────────────────────────
+const displayMain = document.getElementById('displayMain');
+const displayExpr = document.getElementById('displayExpr');
+const historyList = document.getElementById('historyList');
+const historyEmpty = document.getElementById('historyEmpty');
+
+let current = '0';
+let expression = '';
+let waitingForOperand = false;
+let pendingOp = null;
+let pendingValue = null;
+let resultShown = false;
+let history = JSON.parse(localStorage.getItem('calcHistory') || '[]');
+
+function updateDisplay(val, expr) {
+    displayMain.textContent = val;
+    displayExpr.textContent = expr || '';
+}
+
+function setResult(val) {
+    current = val;
+    displayMain.classList.add('result');
+    setTimeout(() => displayMain.classList.remove('result'), 600);
+}
+
+function formatNum(n) {
+    if (isNaN(n) || !isFinite(n)) return n.toString();
+    const s = parseFloat(n.toPrecision(12));
+    return s.toString();
+}
+
+function calculate(a, op, b) {
+    a = parseFloat(a); b = parseFloat(b);
+    switch(op) {
+        case '+': return a + b;
+        case '−': return a - b;
+        case '×': return a * b;
+        case '÷': return b === 0 ? 'Error' : a / b;
+        case 'xʸ': return Math.pow(a, b);
+    }
+    return b;
+}
+
+function addHistory(expr, result) {
+    history.unshift({ expr, result, time: Date.now() });
+    if (history.length > 50) history.pop();
+    localStorage.setItem('calcHistory', JSON.stringify(history));
+    renderHistory();
+}
+
+function renderHistory() {
+    historyList.innerHTML = '';
+    if (history.length === 0) {
+        historyList.appendChild(historyEmpty);
+        historyEmpty.style.display = '';
+        return;
+    }
+    history.forEach((item, i) => {
+        const el = document.createElement('div');
+        el.className = 'history-item';
+        el.innerHTML = `<div class="history-expr">${item.expr}</div><div class="history-result">= ${item.result}</div>`;
+        el.addEventListener('click', () => {
+            current = item.result.toString();
+            expression = item.expr;
+            updateDisplay(current, expression + ' =');
+            resultShown = true;
+        });
+        historyList.appendChild(el);
+    });
+}
+
+function rippleEffect(btn, e) {
+    const rect = btn.getBoundingClientRect();
+    const rip = document.createElement('span');
+    rip.className = 'ripple';
+    const size = Math.max(btn.offsetWidth, btn.offsetHeight);
+    rip.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+    btn.appendChild(rip);
+    setTimeout(() => rip.remove(), 400);
+    btn.classList.add('pulse');
+    setTimeout(() => btn.classList.remove('pulse'), 250);
+}
+
+document.getElementById('keypad').addEventListener('click', function(e) {
+    const btn = e.target.closest('.key');
+    if (!btn) return;
+    rippleEffect(btn, e);
+    const action = btn.dataset.action;
+    handleAction(action);
+});
+
+function handleAction(action) {
+    // Digits
+    if ('0123456789'.includes(action)) {
+        if (resultShown) { current = action; expression = ''; resultShown = false; }
+        else if (waitingForOperand) { current = action; waitingForOperand = false; }
+        else { current = current === '0' ? action : current + action; }
+        updateDisplay(current, expression);
+        return;
+    }
+
+    if (action === '.') {
+        if (resultShown) { current = '0.'; expression = ''; resultShown = false; }
+        else if (waitingForOperand) { current = '0.'; waitingForOperand = false; }
+        else if (!current.includes('.')) current += '.';
+        updateDisplay(current, expression);
+        return;
+    }
+
+    if (action === 'clear') {
+        current = '0'; expression = ''; pendingOp = null; pendingValue = null;
+        waitingForOperand = false; resultShown = false;
+        updateDisplay('0', '');
+        return;
+    }
+
+    if (action === 'backspace') {
+        if (resultShown) { current = '0'; resultShown = false; }
+        else current = current.length > 1 ? current.slice(0,-1) : '0';
+        updateDisplay(current, expression);
+        return;
+    }
+
+    if (action === 'percent') {
+        current = formatNum(parseFloat(current) / 100);
+        updateDisplay(current, expression);
+        return;
+    }
+
+    if (action === 'pi') {
+        current = formatNum(Math.PI);
+        resultShown = true;
+        updateDisplay(current, 'π');
+        return;
+    }
+
+    if (action === 'e-const') {
+        current = formatNum(Math.E);
+        resultShown = true;
+        updateDisplay(current, 'e');
+        return;
+    }
+
+    // Scientific unary ops
+    const sciMap = {
+        'sin':  v => Math.sin(v * Math.PI / 180),
+        'cos':  v => Math.cos(v * Math.PI / 180),
+        'tan':  v => Math.tan(v * Math.PI / 180),
+        'log':  v => v <= 0 ? NaN : Math.log10(v),
+        'sqrt': v => v < 0  ? NaN : Math.sqrt(v),
+    };
+    if (sciMap[action]) {
+        const val = parseFloat(current);
+        const res = sciMap[action](val);
+        const label = action === 'sqrt' ? `√(${val})` : `${action}(${val}°)`;
+        const fmtRes = isNaN(res) ? 'Error' : formatNum(res);
+        addHistory(label, fmtRes);
+        expression = label;
+        current = fmtRes;
+        setResult(current);
+        updateDisplay(current, expression + ' =');
+        resultShown = true;
+        return;
+    }
+
+    if (action === 'power') {
+        if (pendingOp) {
+            const res = calculate(pendingValue, pendingOp, current);
+            const fmtRes = formatNum(res);
+            expression = `${pendingValue} ${pendingOp} ${current}`;
+            current = fmtRes;
+        }
+        pendingValue = current;
+        pendingOp = 'xʸ';
+        expression = `${current} ^`;
+        waitingForOperand = true;
+        updateDisplay(current, expression);
+        return;
+    }
+
+    // Binary operators
+    if (['+','−','×','÷'].includes(action)) {
+        if (pendingOp && !waitingForOperand) {
+            const res = calculate(pendingValue, pendingOp, current);
+            const fmtRes = formatNum(res);
+            const expr = `${pendingValue} ${pendingOp} ${current}`;
+            current = isNaN(parseFloat(fmtRes)) ? 'Error' : fmtRes;
+        }
+        pendingValue = current;
+        pendingOp = action;
+        expression = `${current} ${action}`;
+        waitingForOperand = true;
+        resultShown = false;
+        updateDisplay(current, expression);
+        return;
+    }
+
+    if (action === '=') {
+        if (!pendingOp) return;
+        const val2 = current;
+        const res = calculate(pendingValue, pendingOp, current);
+        const fmtRes = formatNum(res);
+        const expr = `${pendingValue} ${pendingOp} ${val2}`;
+        const result = isNaN(parseFloat(fmtRes)) ? 'Error' : fmtRes;
+        addHistory(expr, result);
+        current = result;
+        setResult(current);
+        updateDisplay(current, expr + ' =');
+        pendingOp = null; pendingValue = null;
+        waitingForOperand = false;
+        resultShown = true;
+        return;
+    }
+}
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+    const map = {
+        '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
+        '.':'.','Enter':'=','Backspace':'backspace','Escape':'clear',
+        '+':'+','-':'−','*':'×','/':'÷','%':'percent','^':'power',
+        's':'sin','c':'cos','t':'tan','l':'log','r':'sqrt',
+    };
+    if (map[e.key]) { e.preventDefault(); handleAction(map[e.key]); }
+});
+
+// ── THEME TOGGLE ──────────────────────────────────────────────────
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon   = document.getElementById('themeIcon');
+let isDark = true;
+
+const sunSVG  = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+const moonSVG = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+
+themeToggle.addEventListener('click', () => {
+    isDark = !isDark;
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    themeIcon.innerHTML = isDark ? moonSVG : sunSVG;
+});
+
+// ── HISTORY TOGGLE ────────────────────────────────────────────────
+const historyToggle = document.getElementById('historyToggle');
+const historyPanel  = document.getElementById('historyPanel');
+
+historyToggle.addEventListener('click', () => {
+    historyToggle.classList.toggle('active');
+    historyPanel.classList.toggle('visible');
+});
+
+document.getElementById('clearHistory').addEventListener('click', () => {
+    history = [];
+    localStorage.removeItem('calcHistory');
+    renderHistory();
+});
+
+// Init
+renderHistory();
+// Show history by default on desktop
+if (window.innerWidth > 680) historyPanel.classList.add('visible');
+</script>
+</body>
+</html>
+
